@@ -1,4 +1,4 @@
-name: Deploy Access API
+name: Deploy Lumo API
 
 on:
   push:
@@ -25,12 +25,12 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             export PATH=$PATH:/usr/local/bin:~/.npm-global/bin
-            cd /var/www/projects/banking/access/api
+            cd /var/www/projects/banking/lumo/api
             git reset --hard HEAD
             git pull origin main
             npm install --legacy-peer-deps
             npm run build
-            pm2 restart access-api || npx pm2 restart access-api
-            echo "✅ Access API restarted successfully."
+            pm2 restart lumo-api || npx pm2 restart lumo-api
+            echo "✅ Lumo API restarted successfully."
 
 

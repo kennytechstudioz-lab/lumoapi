@@ -6,10 +6,10 @@ export NVM_DIR="$HOME/.nvm"
 export PATH=$PATH:/usr/local/bin:~/.npm-global/bin
 
 echo "=============================="
-echo "  Access API — Auto Deploy"
+echo "  Lumo API — Auto Deploy"
 echo "=============================="
 
-PROJECT_DIR="/var/www/projects/banking/access/api"
+PROJECT_DIR="/var/www/projects/banking/lumo/api"
 
 echo "[1/5] Navigating to project..."
 cd "$PROJECT_DIR"
@@ -23,9 +23,9 @@ npm install --legacy-peer-deps
 echo "[4/5] Building TypeScript..."
 npm run build
 
-echo "[5/5] Restarting PM2 process: access-api..."
-pm2 restart access-api || npx pm2 restart access-api
+echo "[5/5] Restarting PM2 process: lumo-api..."
+pm2 restart lumo-api || npx pm2 restart lumo-api
 
 echo ""
-echo "✅ Access API deployed successfully!"
+echo "✅ Lumo API deployed successfully!"
 
