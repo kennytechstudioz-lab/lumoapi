@@ -285,10 +285,9 @@ export const requestCode = async (req: AuthRequest, res: Response): Promise<void
           ${emailBody}
         </div>
         <p>Please enter this code on the transfer verification screen to proceed with your clearance.</p>
-        <p style="color: #e53e3e; font-size: 12px;"><strong>Security Warning:</strong> Access National staff will never ask for your authorization code or online banking password over the phone.</p>
+        <p style="color: #e53e3e; font-size: 12px;"><strong>Security Warning:</strong> Lumo Group staff will never ask for your authorization code or online banking password over the phone.</p>
       `,
-      'Transaction Security Clearance Code',
-      'TAC Clearance'
+      'Transaction Security Clearance Code'
     );
 
     res.json({ message: `A ${type} code has been generated and sent to your registered email.` });

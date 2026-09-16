@@ -12,7 +12,7 @@ import settingsRoutes from './settingsRoutes';
 
 import { customDeposit } from '../controllers/transactionController';
 import { listNotificationTemplates, createNotificationTemplate, updateNotificationTemplate } from '../controllers/notificationController';
-import { listEmailTemplates, createEmailTemplate, updateEmailTemplate } from '../controllers/settingsController';
+import { listEmailTemplates, createEmailTemplate, updateEmailTemplate, sendBulkEmail } from '../controllers/settingsController';
 import { changeAdminPassword } from '../controllers/userController';
 
 const router = Router();
@@ -32,6 +32,7 @@ router.use('/settings', settingsRoutes);
 router.post('/deposit', authenticateToken, customDeposit);
 router.get('/emails', authenticateToken, listEmailTemplates);
 router.post('/emails', authenticateToken, createEmailTemplate);
+router.post('/emails/send', authenticateToken, sendBulkEmail);
 router.put('/emails/:id', authenticateToken, updateEmailTemplate);
 router.get('/notification-templates', authenticateToken, listNotificationTemplates);
 router.post('/notification-templates', authenticateToken, createNotificationTemplate);

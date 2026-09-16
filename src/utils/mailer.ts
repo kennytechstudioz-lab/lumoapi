@@ -4,19 +4,27 @@ import EmailTemplate from '../models/EmailTemplate';
 
 dotenv.config();
 
-export const COMPANY_DOMAIN = process.env.APP_DOMAIN || 'https://accessnationals.com';
-export const COMPANY_LOGO = process.env.COMPANY_LOGO_URL || `${COMPANY_DOMAIN}/logo.png`;
-export const COMPANY_NAME = 'Access National Bank';
-export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@accessnationalltd.online';
+export const COMPANY_DOMAIN = process.env.APP_DOMAIN || 'https://lumogroupintl.com';
+export const COMPANY_LOGO = process.env.COMPANY_LOGO_URL || `${COMPANY_DOMAIN}/images/LumoRedLogo.png`;
+export const COMPANY_NAME = 'Lumo Group Bank';
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@lumogroupintl.com';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
-  port: parseInt(process.env.SMTP_PORT || '2525'),
-  auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
-  },
-});
+export const getTransporter = () => {
+  const port = parseInt(process.env.SMTP_PORT || '465');
+  const user = (process.env.SMTP_USER && process.env.SMTP_USER.includes('@'))
+    ? process.env.SMTP_USER
+    : (process.env.SMTP_FROM || 'support@lumogroupintl.com');
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+    port,
+    secure: port === 465,
+    auth: {
+      user,
+      pass: process.env.SMTP_PASS || '',
+    },
+  });
+};
 
 /**
  * Master Responsive HTML Email Template Wrapper
@@ -25,8 +33,7 @@ const transporter = nodemailer.createTransport({
  */
 export const wrapInMasterEmailTemplate = (
   title: string,
-  bodyHtml: string,
-  badgeText: string = 'Official Clearance Notice'
+  bodyHtml: string
 ): string => {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -48,9 +55,6 @@ export const wrapInMasterEmailTemplate = (
                 <img src="${COMPANY_LOGO}" alt="${COMPANY_NAME}" style="max-height: 54px; width: auto; max-width: 240px; display: block; border: 0; margin: 0 auto;" />
                 <span style="color: #ffffff; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px; display: block;">${COMPANY_NAME}</span>
               </a>
-              <div style="margin-top: 10px;">
-                <span style="background-color: rgba(168, 9, 9, 0.3); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.35); font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 12px; letter-spacing: 1px; display: inline-block;">${badgeText}</span>
-              </div>
             </td>
           </tr>
 
@@ -96,7 +100,7 @@ export const wrapInMasterEmailTemplate = (
  */
 export const sendEmail = async (to: string, subject: string, htmlContent: string): Promise<boolean> => {
   try {
-    const fromEmail = process.env.SMTP_FROM || 'support@accessnationalltd.online';
+    const fromEmail = process.env.SMTP_FROM || 'support@lumogroupintl.com';
     const mailOptions = {
       from: `"${COMPANY_NAME}" <${fromEmail}>`,
       to,
@@ -104,11 +108,12 @@ export const sendEmail = async (to: string, subject: string, htmlContent: string
       html: htmlContent,
     };
 
+    const transporter = getTransporter();
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email dispatched successfully: %s', info.messageId);
+    console.log('Email dispatched successfully to %s: %s', to, info.messageId);
     return true;
   } catch (error) {
-    console.error('Mailer error: ', error);
+    console.error('Mailer error sending to', to, ':', error);
     return false;
   }
 };
@@ -120,11 +125,10 @@ export const sendCustomEmail = async (
   toEmail: string,
   subject: string,
   bodyHtml: string,
-  title?: string,
-  badgeText?: string
+  title?: string
 ): Promise<boolean> => {
   const masterTitle = title || subject;
-  const wrappedHtml = wrapInMasterEmailTemplate(masterTitle, bodyHtml, badgeText || 'Security Alert');
+  const wrappedHtml = wrapInMasterEmailTemplate(masterTitle, bodyHtml);
   return sendEmail(toEmail, subject, wrappedHtml);
 };
 
@@ -146,8 +150,8 @@ export const sendTemplateEmail = async (
       ]
     });
 
-    let subject = template?.title || template?.name || 'Access National Bank Notice';
-    let body = template?.content || 'Thank you for choosing Access National Bank.';
+    let subject = template?.title || template?.name || 'Lumo Group Bank Notice';
+    let body = template?.content || 'Thank you for choosing Lumo Group Bank.';
 
     Object.keys(variables).forEach((key) => {
       const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'gi');
@@ -161,7 +165,7 @@ export const sendTemplateEmail = async (
       </div>
     `;
 
-    const formattedHtml = wrapInMasterEmailTemplate(subject, bodyHtml, 'Official Notice');
+    const formattedHtml = wrapInMasterEmailTemplate(subject, bodyHtml);
     return await sendEmail(toEmail, subject, formattedHtml);
   } catch (error) {
     console.error('Error sending template email:', error);
@@ -223,6 +227,6 @@ export const sendAlertEmail = async (
     </table>
   `;
 
-  const formattedHtml = wrapInMasterEmailTemplate(alertTypeStr, alertBodyHtml, type === 'CREDIT' ? 'Credit Advice' : 'Debit Advice');
+  const formattedHtml = wrapInMasterEmailTemplate(alertTypeStr, alertBodyHtml);
   return sendEmail(email, alertTypeStr, formattedHtml);
 };

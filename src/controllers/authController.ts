@@ -143,9 +143,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
        return;
     }
 
-    // Find User by username or email
+    // Find User by username or email (case-insensitive & trimmed)
+    const sanitizedInput = username.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const user = await User.findOne({
-      $or: [{ username }, { email: username }],
+      $or: [
+        { username: { $regex: new RegExp(`^${sanitizedInput}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${sanitizedInput}$`, 'i') } },
+      ],
     });
 
     if (!user || user.deleted) {

@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { AuthRequest } from '../middlewares/auth';
 import SystemSettings from '../models/SystemSettings';
 import EmailTemplate from '../models/EmailTemplate';
+import User from '../models/User';
+import { sendEmail, wrapInMasterEmailTemplate } from '../utils/mailer';
 
 // Get Settings
 export const getSettings = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -9,15 +11,15 @@ export const getSettings = async (req: AuthRequest, res: Response): Promise<void
     let settings = await SystemSettings.findOne({});
     if (!settings) {
       settings = new SystemSettings({
-        companyName: 'Access National Ltd',
-        companyBankName: 'Adiko Group',
+        companyName: 'Lumo Group Ltd',
+        companyBankName: 'Lumo Group',
         companyAccountNumber: '0034588686',
-        systemEmail: 'support@accessnationalltd.online',
-        companyBank: 'Adiko Bank',
+        systemEmail: 'support@lumogroupintl.com',
+        companyBank: 'Lumo Group Bank',
         routineNumber: 'DE42',
         companyAddress: '6060 ROCKSIDE WOODS BLVD, OH United States',
         companyPhoneNumber: '+1 (555) 123-4567',
-        companyDomain: 'accessnationalltd.com',
+        companyDomain: 'lumogroupintl.com',
         swiftCode: 'DETBDE21XXX',
         sortCode: '66215307',
         btcAddress: '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2',
@@ -154,6 +156,74 @@ export const updateEmailTemplate = async (req: AuthRequest, res: Response): Prom
     await template.save();
     res.json({ message: 'Email template updated successfully', template });
   } catch (error: any) {
-    res.status(550).json({ message: 'Error updating template', error: error.message });
+    res.status(500).json({ message: 'Error updating template', error: error.message });
+  }
+};
+
+// Send Bulk/Single Email to Users
+export const sendBulkEmail = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userIds, subject, content } = req.body;
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      res.status(400).json({ message: 'No recipients selected' });
+      return;
+    }
+    if (!subject || !content) {
+      res.status(400).json({ message: 'Subject and content are required' });
+      return;
+    }
+
+    const users = await User.find({ _id: { $in: userIds } });
+    if (users.length === 0) {
+      res.status(404).json({ message: 'Selected users not found' });
+      return;
+    }
+
+    let sentCount = 0;
+    const errors: string[] = [];
+
+    for (const u of users) {
+      if (!u.email) continue;
+
+      let userSubject = subject;
+      let userContent = content;
+      const vars: Record<string, string> = {
+        fullName: u.fullName || u.username,
+        name: u.fullName || u.username,
+        username: u.username,
+        email: u.email,
+        accountNumber: u.accountNumber || '',
+      };
+
+      Object.keys(vars).forEach((k) => {
+        const reg = new RegExp(`{{\\s*${k}\\s*}}`, 'gi');
+        userSubject = userSubject.replace(reg, vars[k]);
+        userContent = userContent.replace(reg, vars[k]);
+      });
+
+      const bodyHtml = `
+        <div style="margin-top: 10px; color: #334155;">
+          ${userContent.replace(/\n/g, '<br/>')}
+        </div>
+      `;
+
+      const formattedHtml = wrapInMasterEmailTemplate(userSubject, bodyHtml);
+      const sent = await sendEmail(u.email, userSubject, formattedHtml);
+      if (sent) {
+        sentCount++;
+      } else {
+        errors.push(`Failed sending to ${u.email}`);
+      }
+    }
+
+    res.json({
+      message: `Successfully dispatched email to ${sentCount} user(s).`,
+      sentCount,
+      totalSelected: users.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error: any) {
+    console.error('Error dispatching bulk emails:', error);
+    res.status(500).json({ message: 'Error dispatching bulk emails', error: error.message });
   }
 };

@@ -41,7 +41,7 @@ app.use('/api/admin', adminRoutes);
 
 // Base route
 app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Access National Bank API is active.' });
+  res.json({ message: 'Lumo Group Bank API is active.' });
 });
 
 // Global JSON Error Handler — must be last middleware, after all routes
@@ -66,17 +66,17 @@ const seedDatabase = async () => {
 
     // Seed Admin
     const adminUsername = 'Admin';
-    const adminEmail = 'admin@accessnational.com';
+    const adminEmail = 'support@lumogroupintl.com';
     const existingAdmin = await User.findOne({ username: adminUsername });
 
     if (!existingAdmin) {
       const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('AdminPassword123!', salt);
+      const passwordHash = await bcrypt.hash('Test123$', salt);
       const adminUser = new User({
         username: adminUsername,
         email: adminEmail,
         passwordHash,
-        fullName: 'Access National Administrator',
+        fullName: 'Lumo Group Administrator',
         status: 'Admin',
         accountNumber: '0000000000',
         iban: 'DE42662153070000000000',
