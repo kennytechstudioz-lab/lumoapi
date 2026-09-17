@@ -737,31 +737,61 @@ export const performTransfer = async (req: AuthRequest, res: Response): Promise<
   }
 };
 
+// Helper to replace notification template variables supporting both single and double curly braces {var} and {{var}}
+const formatTemplateString = (template: string, vars: Record<string, string | number | undefined | null>): string => {
+  if (!template) return '';
+  let result = template;
+  for (const [key, val] of Object.entries(vars)) {
+    if (val !== undefined && val !== null) {
+      const regex = new RegExp(`\\{{1,2}\\s*${key}\\s*\\}{1,2}`, 'gi');
+      result = result.replace(regex, String(val));
+    }
+  }
+  return result;
+};
+
 // Helper to create notifications and emit WebSocket events for KYC submissions
 const sendKycSubmissionNotifications = async (user: any, idTypeSubmitted?: string) => {
   try {
-    const docType = idTypeSubmitted || user.idType || 'Passport';
+    const rawDocType = idTypeSubmitted || user.idType || 'Passport';
+    const displayDocType = rawDocType === 'Passport' ? 'International Passport' : rawDocType;
+
+    const templateVars = {
+      idType: displayDocType,
+      id_type: displayDocType,
+      docType: displayDocType,
+      fullName: user.fullName || user.username,
+      username: user.username,
+    };
 
     let userNotifTitle = 'Identity Verification Under Review';
-    let userNotifContent = `We write to notify you that your identity verification profile for ${docType} is processing and under review. You will be notified upon approval.`;
+    let userNotifContent = `We write to notify you that your identity verification profile for ${displayDocType} is processing and under review. You will be notified upon approval.`;
 
     try {
       const kycTpl = await NotificationTemplate.findOne({
         $or: [{ name: 'kyc_processing' }, { name: 'KYC-Processing' }]
       });
       if (kycTpl) {
-        userNotifTitle = kycTpl.title
-          .replace(/\{\{idType\}\}/g, docType)
-          .replace(/\{\{fullName\}\}/g, user.fullName || user.username)
-          .replace(/\{\{username\}\}/g, user.username);
-
-        userNotifContent = kycTpl.content
-          .replace(/\{\{idType\}\}/g, docType)
-          .replace(/\{\{fullName\}\}/g, user.fullName || user.username)
-          .replace(/\{\{username\}\}/g, user.username);
+        userNotifTitle = formatTemplateString(kycTpl.title, templateVars);
+        userNotifContent = formatTemplateString(kycTpl.content, templateVars);
       }
     } catch (e) {
       console.error('Error finding kyc_processing notification template:', e);
+    }
+
+    let adminNotifTitle = 'New Identity Verification Pending Review';
+    let adminNotifContent = `Client ${user.fullName || user.username} (@${user.username}) has submitted an identity clearance document (${displayDocType}) for KYC verification. Administrative audit required.`;
+
+    try {
+      const adminKycTpl = await NotificationTemplate.findOne({
+        $or: [{ name: 'kyc_pending_admin' }, { name: 'KYC-Pending-Admin' }]
+      });
+      if (adminKycTpl) {
+        adminNotifTitle = formatTemplateString(adminKycTpl.title, templateVars);
+        adminNotifContent = formatTemplateString(adminKycTpl.content, templateVars);
+      }
+    } catch (e) {
+      console.error('Error finding kyc_pending_admin template:', e);
     }
 
     // 1. Processing Notification for User
@@ -778,8 +808,8 @@ const sendKycSubmissionNotifications = async (user: any, idTypeSubmitted?: strin
     // 2. Pending Notification for Admin
     const adminNotif = new Notification({
       username: 'Admin',
-      title: 'New Identity Verification Pending Review',
-      content: `Client ${user.fullName || user.username} (@${user.username}) has submitted an identity clearance document (${docType}) for KYC verification. Administrative audit required.`,
+      title: adminNotifTitle,
+      content: adminNotifContent,
       isRead: false,
       time: Math.floor(Date.now() / 1000),
       admin: true,
@@ -789,11 +819,11 @@ const sendKycSubmissionNotifications = async (user: any, idTypeSubmitted?: strin
     // 3. Emit Realtime WebSocket Events
     broadcastToAdmins({
       type: 'KYC_PENDING',
-      title: 'New Identity Verification Pending Review',
-      content: `Client ${user.fullName || user.username} (@${user.username}) has submitted an identity clearance document (${docType}) for KYC verification.`,
+      title: adminNotifTitle,
+      content: adminNotifContent,
       username: user.username,
       fullName: user.fullName || user.username,
-      idType: docType,
+      idType: displayDocType,
       createdAt: new Date().toISOString(),
     });
 
@@ -801,7 +831,7 @@ const sendKycSubmissionNotifications = async (user: any, idTypeSubmitted?: strin
       type: 'KYC_PROCESSING',
       title: userNotifTitle,
       content: userNotifContent,
-      idType: docType,
+      idType: displayDocType,
       notification: userNotif,
       createdAt: new Date().toISOString(),
     });
