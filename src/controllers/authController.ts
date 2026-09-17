@@ -125,6 +125,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         fullName: newUser.fullName,
         accountNumber: newUser.accountNumber,
         status: newUser.status,
+        profilePicture: newUser.profilePicture || '',
       },
     });
   } catch (error: any) {
@@ -202,6 +203,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         fullName: user.fullName,
         accountNumber: user.accountNumber,
         status: user.status,
+        profilePicture: user.profilePicture || '',
       },
     });
   } catch (error: any) {
